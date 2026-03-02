@@ -1,0 +1,54 @@
+name: Weekly Hot Wheels Scraper
+
+on:
+  schedule:
+    # Every Sunday at 00:00 UTC
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      year:
+        description: "Specific year to scrape (leave empty for incremental update)"
+        required: false
+        default: ""
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install scraper dependencies
+        run: pip install -r scraper/requirements.txt
+
+      - name: Restore database cache
+        uses: actions/cache@v4
+        with:
+          path: api/hw_cars.db
+          key: hw-db-${{ github.run_id }}
+          restore-keys: |
+            hw-db-
+
+      - name: Run scraper
+        env:
+          DB_PATH: api/hw_cars.db
+        run: |
+          if [ -n "${{ github.event.inputs.year }}" ]; then
+            python scraper/hotwheels_scraper.py --year ${{ github.event.inputs.year }}
+          else
+            python scraper/hotwheels_scraper.py
+          fi
+
+      - name: Commit updated database
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update hw_cars.db [skip ci]"
+          file_pattern: api/hw_cars.db
