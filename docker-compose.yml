@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./api
+    container_name: hw-api
+    environment:
+      - DB_PATH=/data/hw_cars.db
+    volumes:
+      - hw-data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  scraper:
+    build:
+      context: ./scraper
+      dockerfile: Dockerfile
+    container_name: hw-scraper
+    environment:
+      - DB_PATH=/data/hw_cars.db
+    volumes:
+      - hw-data:/data
+    depends_on:
+      - api
+    profiles:
+      - scraper
+
+  web:
+    build: ./web
+    container_name: hw-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  hw-data:
